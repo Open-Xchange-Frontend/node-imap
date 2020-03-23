@@ -1,6 +1,6 @@
-{ "name": "imap",
+{ "name": "@open-xchange/node-imap",
   "version": "0.8.19",
-  "author": "Brian White <mscdex@mscdex.net>",
+  "author": "Open-Xchange <ui-team@open-xchange.com>",
   "description": "An IMAP module for node.js that makes communicating with IMAP servers easy",
   "main": "./lib/Connection",
   "dependencies": {
@@ -12,6 +12,6 @@
   },
   "engines": { "node": ">=0.8.0" },
   "keywords": [ "imap", "mail", "email", "reader", "client" ],
-  "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/node-imap/raw/master/LICENSE" } ],
-  "repository": { "type": "git", "url": "http://github.com/mscdex/node-imap.git" }
+  "licenses": [ { "type": "MIT", "url": "https://raw.githubusercontent.com/Open-Xchange-Frontend/node-imap/master/LICENSE" } ],
+  "repository": { "type": "git", "url": "https://github.com/Open-Xchange-Frontend/node-imap.git" }
 }
