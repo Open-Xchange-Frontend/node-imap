@@ -2244,7 +2244,7 @@ TextEncoder.prototype = {
       } while (last_byte !== EOF_byte);
       this._encoder = null;
     }
-    return new Buffer(bytes);
+    return Buffer.from(bytes);
   }
 };
 
