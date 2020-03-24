@@ -6,8 +6,8 @@ describe('Connection', function () {
   let server, imap;
 
   afterEach(function () {
-    server.close();
-    imap.end();
+    if (server) server.close();
+    if (imap) imap.end();
   });
 
   it('fetch dup', async function () {
@@ -280,6 +280,76 @@ describe('Connection', function () {
       seqno: 1,
       which: 'TEXT',
       size: 16
+    });
+  });
+
+  describe('metadata', function () {
+    describe('get', function () {
+      it('single', async function () {
+        const data = require('../fixtures/metadata/get-single.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        const metadata = await imap.getMetadata('/shared/comment', 'INBOX');
+
+        assert.deepEqual(
+          metadata,
+          { '/shared/comment': 'Shared comment' }
+        );
+      });
+
+      it('single without mailbox', async function () {
+        const data = require('../fixtures/metadata/get-single-no-mailbox.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        const metadata = await imap.getMetadata('/shared/comment');
+
+        assert.deepEqual(
+          metadata,
+          { '/shared/comment': 'Shared comment' }
+        );
+      });
+
+      it('multiple (one line response)', async function () {
+        const data = require('../fixtures/metadata/get-multiple-one-line.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        const metadata = await imap.getMetadata(['/shared/comment', '/private/comment'], 'INBOX');
+
+        assert.deepEqual(
+          metadata,
+          {
+            '/shared/comment': 'Shared comment',
+            '/private/comment': 'Private comment',
+          }
+        );
+      });
+
+      it('multiple (multi line response)', async function () {
+        const data = require('../fixtures/metadata/get-multiple-multi-line.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        const metadata = await imap.getMetadata(['/shared/comment', '/private/comment'], 'INBOX');
+
+        assert.deepEqual(
+          metadata,
+          {
+            '/shared/comment': 'Shared comment',
+            '/private/comment': 'Private comment',
+          }
+        );
+      });
     });
   });
 });
