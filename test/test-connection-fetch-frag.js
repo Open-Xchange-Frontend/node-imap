@@ -67,17 +67,16 @@ srv.listen(0, '127.0.0.1', async function() {
     keepalive: false
   });
   await imap.connect();
-  imap.openBox('INBOX', true, function() {
-    var f = imap.seq.fetch(1);
-    f.on('message', function(m) {
-      m.once('attributes', function(attrs) {
-        result = attrs;
-      });
+  await imap.openBox('INBOX', true);
+  var f = imap.seq.fetch(1);
+  f.on('message', function(m) {
+    m.once('attributes', function(attrs) {
+      result = attrs;
     });
-    f.on('end', function() {
-      srv.close();
-      imap.end();
-    });
+  });
+  f.on('end', function() {
+    srv.close();
+    imap.end();
   });
 });
 

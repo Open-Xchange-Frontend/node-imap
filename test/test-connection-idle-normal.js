@@ -91,7 +91,7 @@ var srv = net.createServer(function(sock) {
     }
   });
 });
-srv.listen(0, '127.0.0.1', function() {
+srv.listen(0, '127.0.0.1', async function() {
   var port = srv.address().port;
   var imap = new Imap({
     user: 'foo',
@@ -100,33 +100,30 @@ srv.listen(0, '127.0.0.1', function() {
     port: port,
     keepalive: true
   });
-  imap.on('ready', function() {
-    srv.close();
-    imap.openBox('INBOX', true, function() {
-      var f = imap.seq.fetch(1, { bodies: ['TEXT'] });
-      f.on('message', function(m) {
-        m.on('body', function(stream, info) {
-          bodyInfo = info;
-          stream.on('data', function(chunk) { body += chunk.toString('utf8'); });
-        });
-        m.on('attributes', function(attrs) {
-          result = attrs;
-        });
-      });
-      f.on('end', function() {
-        setTimeout(function() {
-          var timeout = setTimeout(function() {
-            assert(false, 'Timed out waiting for STATUS');
-          }, 500);
-          imap.status('test', function(err, status) {
-            clearTimeout(timeout);
-            imap.end();
-          });
-        }, 500);
-      });
+  await imap.connect();
+  await imap.openBox('INBOX', true);
+  var f = imap.seq.fetch(1, { bodies: ['TEXT'] });
+  f.on('message', function(m) {
+    m.on('body', function(stream, info) {
+      bodyInfo = info;
+      stream.on('data', function(chunk) { body += chunk.toString('utf8'); });
+    });
+    m.on('attributes', function(attrs) {
+      result = attrs;
     });
   });
-  imap.connect();
+  f.on('end', function() {
+    setTimeout(function() {
+      var timeout = setTimeout(function() {
+        assert(false, 'Timed out waiting for STATUS');
+      }, 500);
+      imap.status('test', function(err, status) {
+        clearTimeout(timeout);
+        imap.end();
+        srv.close();
+      });
+    }, 500);
+  });
 });
 
 process.once('exit', function() {

@@ -91,7 +91,7 @@ var srv = net.createServer(function(sock) {
     }
   });
 });
-srv.listen(0, '127.0.0.1', function() {
+srv.listen(0, '127.0.0.1', async function() {
   var port = srv.address().port;
   var imap = new Imap({
     user: 'foo',
@@ -100,27 +100,25 @@ srv.listen(0, '127.0.0.1', function() {
     port: port,
     keepalive: true
   });
-  imap.on('ready', function() {
-    srv.close();
-    imap.openBox('INBOX', true, function() {
-      var f = imap.seq.fetch(1, { bodies: ['TEXT'] });
-      f.on('message', function(m) {
-        m.on('body', function(stream, info) {
-          bodyInfo = info;
-          stream.on('data', function(chunk) { body += chunk.toString('utf8'); });
-        });
-        m.on('attributes', function(attrs) {
-          result = attrs;
-        });
-      });
-      f.on('end', function() {
-        imap.status('test', function(err, status) {
-          imap.end();
-        });
-      });
+  await imap.connect();
+  await imap.openBox('INBOX', true);
+  var f = imap.seq.fetch(1, { bodies: ['TEXT'] });
+  f.on('message', function(m) {
+    m.on('body', function(stream, info) {
+      bodyInfo = info;
+      stream.on('data', function(chunk) { body += chunk.toString('utf8'); });
+    });
+    m.on('attributes', function(attrs) {
+      result = attrs;
     });
   });
-  imap.connect();
+  f.on('end', async function() {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    imap.status('test', function(err, status) {
+      imap.end();
+      srv.close();
+    });
+  });
 });
 
 process.once('exit', function() {
