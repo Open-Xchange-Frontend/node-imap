@@ -687,6 +687,63 @@ describe('parser', function () {
         ]
       );
     });
+    describe('Metadata', function () {
+      it('single entry-value pair', async function () {
+        const source = ['* METADATA "INBOX" (/private/comment "My own comment")', CRLF];
+        const { result } = await pushToStream(source);
+        assert.deepEqual(
+          result,
+          [{
+            type: 'metadata',
+            num: undefined,
+            textCode: undefined,
+            text: {
+              mailbox: "INBOX",
+              data: {
+                '/private/comment': 'My own comment'
+              }
+            }
+          }]
+        )
+      });
+      it('multiple entry-value pair', async function () {
+        const source = ['* METADATA "INBOX" (/private/comment "My comment" /shared/comment "Its sunny outside!")', CRLF];
+        const { result } = await pushToStream(source);
+        assert.deepEqual(
+          result,
+          [{
+            type: 'metadata',
+            num: undefined,
+            textCode: undefined,
+            text: {
+              mailbox: 'INBOX',
+              data: {
+                '/private/comment': 'My comment',
+                '/shared/comment': 'Its sunny outside!'
+              }
+            }
+          }]
+        )
+      });
+      it('unsolicited response', async function () {
+        const source = ['* METADATA "" /shared/comment', CRLF];
+        const { result } = await pushToStream(source);
+        assert.deepEqual(
+          result,
+          [{
+            type: 'metadata',
+            num: undefined,
+            textCode: undefined,
+            text: {
+              mailbox: '',
+              data: {
+                '/shared/comment': undefined
+              }
+            }
+          }]
+        )
+      });
+    });
   });
   it('Tagged OK (no text code, no text)', async function () {
     const source = ['A1 OK', CRLF]; // some servers like ppops.net sends such response
