@@ -79,7 +79,7 @@ var srv = net.createServer(function(sock) {
     }
   });
 });
-srv.listen(0, '127.0.0.1', function() {
+srv.listen(0, '127.0.0.1', async function() {
   var port = srv.address().port;
   var imap = new Imap({
     user: 'foo',
@@ -88,69 +88,67 @@ srv.listen(0, '127.0.0.1', function() {
     port: port,
     keepalive: false
   });
-  imap.on('ready', function() {
-    srv.close();
-    imap.openBox('INBOX', true, function() {
-      var f = imap.seq.fetch([1,2], { bodies: ['TEXT'] });
-      var nbody = -1;
-      f.on('message', function(m) {
-        m.on('body', function(stream, info) {
-          ++nbody;
-          bodyInfo.push(info);
-          body[nbody] = '';
-          if (nbody === 0) {
-            // first allow body.push() to return false in parser.js
-            setTimeout(function() {
-              stream.on('data', function(chunk) {
-                body[nbody] += chunk.toString('binary');
-              });
-              setTimeout(function() {
-                var oldRead = stream._read,
-                    readCalled = false;
-                stream._read = function(n) {
-                  readCalled = true;
-                  stream._read = oldRead;
-                  imap._sock.push(bytes.substring(100, 200)
-                                  + ')'
-                                  + CRLF
-                                  + 'A5 OK Success'
-                                  + CRLF);
-                  imap._parser._tryread();
-                };
-                imap._sock.push(bytes.substring(20000)
-                                + ')'
-                                + CRLF
-                                + '* 2 FETCH (UID 1001 FLAGS (\\Seen) INTERNALDATE "05-Sep-2004 00:38:13 +0000" BODY[TEXT] {200}'
-                                + CRLF
-                                + bytes.substring(0, 100));
-
-                // if we got this far, then we didn't get an exception and we
-                // are running with the bug fix in place
-                if (!readCalled) {
-                  imap._sock.push(bytes.substring(100, 200)
-                                  + ')'
-                                  + CRLF
-                                  + 'A5 OK Success'
-                                  + CRLF);
-                }
-              }, 100);
-            }, 100);
-          } else {
+  await imap.connect();
+  imap.openBox('INBOX', true, function() {
+    var f = imap.seq.fetch([1,2], { bodies: ['TEXT'] });
+    var nbody = -1;
+    f.on('message', function(m) {
+      m.on('body', function(stream, info) {
+        ++nbody;
+        bodyInfo.push(info);
+        body[nbody] = '';
+        if (nbody === 0) {
+          // first allow body.push() to return false in parser.js
+          setTimeout(function() {
             stream.on('data', function(chunk) {
               body[nbody] += chunk.toString('binary');
             });
-          }
-        });
-        m.on('attributes', function(attrs) {
-          result.push(attrs);
-        });
+            setTimeout(function() {
+              var oldRead = stream._read,
+                  readCalled = false;
+              stream._read = function(n) {
+                readCalled = true;
+                stream._read = oldRead;
+                imap._sock.push(bytes.substring(100, 200)
+                                + ')'
+                                + CRLF
+                                + 'A5 OK Success'
+                                + CRLF);
+                imap._parser._tryread();
+              };
+              imap._sock.push(bytes.substring(20000)
+                              + ')'
+                              + CRLF
+                              + '* 2 FETCH (UID 1001 FLAGS (\\Seen) INTERNALDATE "05-Sep-2004 00:38:13 +0000" BODY[TEXT] {200}'
+                              + CRLF
+                              + bytes.substring(0, 100));
+
+              // if we got this far, then we didn't get an exception and we
+              // are running with the bug fix in place
+              if (!readCalled) {
+                imap._sock.push(bytes.substring(100, 200)
+                                + ')'
+                                + CRLF
+                                + 'A5 OK Success'
+                                + CRLF);
+              }
+            }, 100);
+          }, 100);
+        } else {
+          stream.on('data', function(chunk) {
+            body[nbody] += chunk.toString('binary');
+          });
+        }
       });
-      f.on('end', function() {
-        imap.end();
+      m.on('attributes', function(attrs) {
+        result.push(attrs);
       });
     });
+    f.on('end', function() {
+      srv.close();
+      imap.end();
+    });
   });
-  imap.connect();
 });
 
 process.once('exit', function() {

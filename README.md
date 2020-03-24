@@ -45,39 +45,39 @@ function openInbox(cb) {
   imap.openBox('INBOX', true, cb);
 }
 
-imap.once('ready', function() {
-  openInbox(function(err, box) {
-    if (err) throw err;
-    var f = imap.seq.fetch('1:3', {
-      bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
-      struct: true
-    });
-    f.on('message', function(msg, seqno) {
-      console.log('Message #%d', seqno);
-      var prefix = '(#' + seqno + ') ';
-      msg.on('body', function(stream, info) {
-        var buffer = '';
-        stream.on('data', function(chunk) {
-          buffer += chunk.toString('utf8');
-        });
-        stream.once('end', function() {
-          console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-        });
+await imap.connect();
+
+openInbox(function(err, box) {
+  if (err) throw err;
+  var f = imap.seq.fetch('1:3', {
+    bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
+    struct: true
+  });
+  f.on('message', function(msg, seqno) {
+    console.log('Message #%d', seqno);
+    var prefix = '(#' + seqno + ') ';
+    msg.on('body', function(stream, info) {
+      var buffer = '';
+      stream.on('data', function(chunk) {
+        buffer += chunk.toString('utf8');
       });
-      msg.once('attributes', function(attrs) {
-        console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-      });
-      msg.once('end', function() {
-        console.log(prefix + 'Finished');
+      stream.once('end', function() {
+        console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
       });
     });
-    f.once('error', function(err) {
-      console.log('Fetch error: ' + err);
+    msg.once('attributes', function(attrs) {
+      console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
     });
-    f.once('end', function() {
-      console.log('Done fetching all messages!');
-      imap.end();
+    msg.once('end', function() {
+      console.log(prefix + 'Finished');
     });
+  });
+  f.once('error', function(err) {
+    console.log('Fetch error: ' + err);
+  });
+  f.once('end', function() {
+    console.log('Done fetching all messages!');
+    imap.end();
   });
 });
 
@@ -88,8 +88,6 @@ imap.once('error', function(err) {
 imap.once('end', function() {
   console.log('Connection ended');
 });
-
-imap.connect();
 ```
 
 * Retrieve the 'from' header and buffer the entire body of the newest message:
@@ -401,7 +399,7 @@ Connection Instance Methods
         * **forceNoop** - _boolean_ - Set to `true` to force use of NOOP keepalive on servers also support IDLE. **Default:** false
     * **debug** - _function_ - If set, the function will be called with one argument, a string containing some debug info **Default:** (no debug output)
 
-* **connect**() - _(void)_ - Attempts to connect and authenticate with the IMAP server.
+* **connect**() - _(Promise)_ - Attempts to connect and authenticate with the IMAP server.
 
 * **end**() - _(void)_ - Closes the connection to the server after all requests in the queue have been sent.
 
