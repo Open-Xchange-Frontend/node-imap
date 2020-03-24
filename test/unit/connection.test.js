@@ -315,6 +315,24 @@ describe('Connection', function () {
         );
       });
 
+      it('single with depth', async function () {
+        const data = require('../fixtures/metadata/get-depth.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        const metadata = await imap.getMetadata('/private/filters/values', 'INBOX', 1);
+
+        assert.deepEqual(
+          metadata,
+          {
+            '/private/filters/values/small': 'SMALLER 5000',
+            '/private/filters/values/boss': 'FROM "boss@example.com"',
+          }
+        );
+      });
+
       it('multiple (one line response)', async function () {
         const data = require('../fixtures/metadata/get-multiple-one-line.js');
         server = await getServer(data);

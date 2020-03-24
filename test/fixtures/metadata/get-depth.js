@@ -17,7 +17,7 @@ module.exports = {
       'A3 OK Success'
     ],
     [
-      '* METADATA "INBOX" (/shared/comment "Shared comment")',
+      '* METADATA "INBOX" (/private/filters/values/small "SMALLER 5000" /private/filters/values/boss "FROM \"boss@example.com\"")',
       'A4 OK GETMETADATA complete'
     ],
     [
@@ -30,7 +30,7 @@ module.exports = {
     'A1 LOGIN "foo" "bar"',
     'A2 NAMESPACE',
     'A3 LIST "" ""',
-    'A4 GETMETADATA "INBOX" (/shared/comment)',
+    'A4 GETMETADATA "INBOX" (DEPTH 1) (/private/filters/values)',
     'A5 LOGOUT'
   ]
 };

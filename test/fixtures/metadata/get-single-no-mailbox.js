@@ -30,7 +30,7 @@ module.exports = {
     'A1 LOGIN "foo" "bar"',
     'A2 NAMESPACE',
     'A3 LIST "" ""',
-    'A4 GETMETADATA "" /shared/comment',
+    'A4 GETMETADATA "" (/shared/comment)',
     'A5 LOGOUT'
   ]
 };
