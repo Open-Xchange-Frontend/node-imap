@@ -5,11 +5,11 @@
   "description": "An IMAP module for node.js that makes communicating with IMAP servers easy",
   "main": "./lib/Connection",
   "dependencies": {
-    "utf7": ">=1.0.2",
-    "readable-stream": "1.1.x"
+    "readable-stream": "1.1.x",
+    "utf7": ">=1.0.2"
   },
   "scripts": {
-    "test": "node test/test.js"
+    "test": "mocha --config test/.mocharc.js"
   },
   "engines": {
     "node": ">=0.8.0"
@@ -30,5 +30,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Open-Xchange-Frontend/node-imap.git"
+  },
+  "devDependencies": {
+    "mocha": "^7.1.1"
   }
 }
