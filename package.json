@@ -9,7 +9,7 @@
     "utf7": ">=1.0.2"
   },
   "scripts": {
-    "test": "mocha --config test/.mocharc.js"
+    "test": "mocha --config test/.mocharc.js --exit"
   },
   "engines": {
     "node": ">=0.8.0"
