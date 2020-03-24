@@ -369,5 +369,46 @@ describe('Connection', function () {
         );
       });
     });
+    describe('set', function () {
+      it('single', async function () {
+        const data = require('../fixtures/metadata/set-single.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        await imap.setMetadata({ '/shared/comment': 'Shared comment' }, 'INBOX');
+      });
+
+      it('single without mailbox', async function () {
+        const data = require('../fixtures/metadata/set-single-without-mailbox.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        await imap.setMetadata({ '/shared/comment': 'Shared comment' }, '');
+      });
+
+      it('single to null', async function () {
+        const data = require('../fixtures/metadata/set-nil.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        await imap.setMetadata({ '/shared/comment': null }, 'INBOX');
+      });
+
+      it('multiple', async function () {
+        const data = require('../fixtures/metadata/set-multiple.js');
+        server = await getServer(data);
+        const config = getDefaultConfig({ server });
+        imap = new Imap(Object.assign(config, { keepalive: false }));
+
+        await imap.connect();
+        await imap.setMetadata({ '/shared/comment': 'Shared comment', '/private/comment': 'Private comment' }, 'INBOX');
+      });
+    });
   });
 });
