@@ -41,52 +41,46 @@ var imap = new Imap({
   tls: true
 });
 
-function openInbox(cb) {
-  imap.openBox('INBOX', true, cb);
-}
-
-await imap.connect();
-
-openInbox(function(err, box) {
-  if (err) throw err;
-  var f = imap.seq.fetch('1:3', {
-    bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
-    struct: true
-  });
-  f.on('message', function(msg, seqno) {
-    console.log('Message #%d', seqno);
-    var prefix = '(#' + seqno + ') ';
-    msg.on('body', function(stream, info) {
-      var buffer = '';
-      stream.on('data', function(chunk) {
-        buffer += chunk.toString('utf8');
-      });
-      stream.once('end', function() {
-        console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-      });
-    });
-    msg.once('attributes', function(attrs) {
-      console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-    });
-    msg.once('end', function() {
-      console.log(prefix + 'Finished');
-    });
-  });
-  f.once('error', function(err) {
-    console.log('Fetch error: ' + err);
-  });
-  f.once('end', function() {
-    console.log('Done fetching all messages!');
-    imap.end();
-  });
-});
-
 imap.once('error', function(err) {
   console.log(err);
 });
 
 imap.once('end', function() {
   console.log('Connection ended');
+});
+
+await imap.connect();
+var box = await openBox('INBOX', true);
+
+var f = imap.seq.fetch('1:3', {
+  bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
+  struct: true
+});
+f.on('message', function(msg, seqno) {
+  console.log('Message #%d', seqno);
+  var prefix = '(#' + seqno + ') ';
+  msg.on('body', function(stream, info) {
+    var buffer = '';
+    stream.on('data', function(chunk) {
+      buffer += chunk.toString('utf8');
+    });
+    stream.once('end', function() {
+      console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
+    });
+  });
+  msg.once('attributes', function(attrs) {
+    console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
+  });
+  msg.once('end', function() {
+    console.log(prefix + 'Finished');
+  });
+});
+f.once('error', function(err) {
+  console.log('Fetch error: ' + err);
+});
+f.once('end', function() {
+  console.log('Done fetching all messages!');
+  imap.end();
 });
 ```
 
@@ -95,43 +89,40 @@ imap.once('end', function() {
 ```javascript
 // using the functions and variables already defined in the first example ...
 
-openInbox(function(err, box) {
-  if (err) throw err;
-  var f = imap.seq.fetch(box.messages.total + ':*', { bodies: ['HEADER.FIELDS (FROM)','TEXT'] });
-  f.on('message', function(msg, seqno) {
-    console.log('Message #%d', seqno);
-    var prefix = '(#' + seqno + ') ';
-    msg.on('body', function(stream, info) {
+var f = imap.seq.fetch(box.messages.total + ':*', { bodies: ['HEADER.FIELDS (FROM)','TEXT'] });
+f.on('message', function(msg, seqno) {
+  console.log('Message #%d', seqno);
+  var prefix = '(#' + seqno + ') ';
+  msg.on('body', function(stream, info) {
+    if (info.which === 'TEXT')
+      console.log(prefix + 'Body [%s] found, %d total bytes', inspect(info.which), info.size);
+    var buffer = '', count = 0;
+    stream.on('data', function(chunk) {
+      count += chunk.length;
+      buffer += chunk.toString('utf8');
       if (info.which === 'TEXT')
-        console.log(prefix + 'Body [%s] found, %d total bytes', inspect(info.which), info.size);
-      var buffer = '', count = 0;
-      stream.on('data', function(chunk) {
-        count += chunk.length;
-        buffer += chunk.toString('utf8');
-        if (info.which === 'TEXT')
-          console.log(prefix + 'Body [%s] (%d/%d)', inspect(info.which), count, info.size);
-      });
-      stream.once('end', function() {
-        if (info.which !== 'TEXT')
-          console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-        else
-          console.log(prefix + 'Body [%s] Finished', inspect(info.which));
-      });
+        console.log(prefix + 'Body [%s] (%d/%d)', inspect(info.which), count, info.size);
     });
-    msg.once('attributes', function(attrs) {
-      console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-    });
-    msg.once('end', function() {
-      console.log(prefix + 'Finished');
+    stream.once('end', function() {
+      if (info.which !== 'TEXT')
+        console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
+      else
+        console.log(prefix + 'Body [%s] Finished', inspect(info.which));
     });
   });
-  f.once('error', function(err) {
-    console.log('Fetch error: ' + err);
+  msg.once('attributes', function(attrs) {
+    console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
   });
-  f.once('end', function() {
-    console.log('Done fetching all messages!');
-    imap.end();
+  msg.once('end', function() {
+    console.log(prefix + 'Finished');
   });
+});
+f.once('error', function(err) {
+  console.log('Fetch error: ' + err);
+});
+f.once('end', function() {
+  console.log('Done fetching all messages!');
+  imap.end();
 });
 ```
 
@@ -142,32 +133,29 @@ openInbox(function(err, box) {
 
 var fs = require('fs'), fileStream;
 
-openInbox(function(err, box) {
+imap.search([ 'UNSEEN', ['SINCE', 'May 20, 2010'] ], function(err, results) {
   if (err) throw err;
-  imap.search([ 'UNSEEN', ['SINCE', 'May 20, 2010'] ], function(err, results) {
-    if (err) throw err;
-    var f = imap.fetch(results, { bodies: '' });
-    f.on('message', function(msg, seqno) {
-      console.log('Message #%d', seqno);
-      var prefix = '(#' + seqno + ') ';
-      msg.on('body', function(stream, info) {
-        console.log(prefix + 'Body');
-        stream.pipe(fs.createWriteStream('msg-' + seqno + '-body.txt'));
-      });
-      msg.once('attributes', function(attrs) {
-        console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-      });
-      msg.once('end', function() {
-        console.log(prefix + 'Finished');
-      });
+  var f = imap.fetch(results, { bodies: '' });
+  f.on('message', function(msg, seqno) {
+    console.log('Message #%d', seqno);
+    var prefix = '(#' + seqno + ') ';
+    msg.on('body', function(stream, info) {
+      console.log(prefix + 'Body');
+      stream.pipe(fs.createWriteStream('msg-' + seqno + '-body.txt'));
     });
-    f.once('error', function(err) {
-      console.log('Fetch error: ' + err);
+    msg.once('attributes', function(attrs) {
+      console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
     });
-    f.once('end', function() {
-      console.log('Done fetching all messages!');
-      imap.end();
+    msg.once('end', function() {
+      console.log(prefix + 'Finished');
     });
+  });
+  f.once('error', function(err) {
+    console.log('Fetch error: ' + err);
+  });
+  f.once('end', function() {
+    console.log('Done fetching all messages!');
+    imap.end();
   });
 });
 ```
@@ -401,27 +389,27 @@ Connection Instance Methods
 
 * **connect**() - _(Promise)_ - Attempts to connect and authenticate with the IMAP server.
 
-* **end**() - _(void)_ - Closes the connection to the server after all requests in the queue have been sent.
+* **end**() - _(Promise)_ - Closes the connection to the server after all requests in the queue have been sent.
 
 * **destroy**() - _(void)_ - Immediately destroys the connection to the server.
 
-* **openBox**(< _string_ >mailboxName[, < _boolean_ >openReadOnly=false[, < _object_ >modifiers]], < _function_ >callback) - _(void)_ - Opens a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. `modifiers` is used by IMAP extensions. `callback` has 2 parameters: < _Error_ >err, < _Box_ >mailbox.
+* **openBox**(< _string_ >mailboxName[, < _boolean_ >openReadOnly=false[, < _object_ >modifiers]]) - _(Promise)_ - Opens a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. `modifiers` is used by IMAP extensions. `Resolves` with < _Box_ >mailbox.
 
-* **closeBox**([< _boolean_ >autoExpunge=true, ]< _function_ >callback) - _(void)_ - Closes the currently open mailbox. If `autoExpunge` is true, any messages marked as Deleted in the currently open mailbox will be removed if the mailbox was NOT opened in read-only mode. If `autoExpunge` is false, you disconnect, or you open another mailbox, messages marked as Deleted will **NOT** be removed from the currently open mailbox. `callback` has 1 parameter: < _Error_ >err.
+* **closeBox**([< _boolean_ >autoExpunge=true]) - _(Promise)_ - Closes the currently open mailbox. If `autoExpunge` is true, any messages marked as Deleted in the currently open mailbox will be removed if the mailbox was NOT opened in read-only mode. If `autoExpunge` is false, you disconnect, or you open another mailbox, messages marked as Deleted will **NOT** be removed from the currently open mailbox.
 
-* **addBox**(< _string_ >mailboxName, < _function_ >callback) - _(void)_ - Creates a new mailbox on the server. `mailboxName` should include any necessary prefix/path. `callback` has 1 parameter: < _Error_ >err.
+* **addBox**(< _string_ >mailboxName) - _(Promise)_ - Creates a new mailbox on the server. `mailboxName` should include any necessary prefix/path.
 
-* **delBox**(< _string_ >mailboxName, < _function_ >callback) - _(void)_ - Removes a specific mailbox that exists on the server. `mailboxName` should including any necessary prefix/path. `callback` has 1 parameter: < _Error_ >err.
+* **delBox**(< _string_ >mailboxName) - _(Promise)_ - Removes a specific mailbox that exists on the server. `mailboxName` should including any necessary prefix/path.
 
-* **renameBox**(< _string_ >oldMailboxName, < _string_ >newMailboxName, < _function_ >callback) - _(void)_ - Renames a specific mailbox that exists on the server. Both `oldMailboxName` and `newMailboxName` should include any necessary prefix/path. `callback` has 2 parameters: < _Error_ >err, < _Box_ >mailbox. **Note:** Renaming the 'INBOX' mailbox will instead cause all messages in 'INBOX' to be moved to the new mailbox.
+* **renameBox**(< _string_ >oldMailboxName, < _string_ >newMailboxName) - _(Promise)_ - Renames a specific mailbox that exists on the server. Both `oldMailboxName` and `newMailboxName` should include any necessary prefix/path. `callback` has 2 parameters: < _Error_ >err, < _Box_ >mailbox. **Note:** Renaming the 'INBOX' mailbox will instead cause all messages in 'INBOX' to be moved to the new mailbox.
 
-* **subscribeBox**(< _string_ >mailboxName, < _function_ >callback) - _(void)_ - Subscribes to a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. `callback` has 1 parameter: < _Error_ >err.
+* **subscribeBox**(< _string_ >mailboxName) - _(Promise)_ - Subscribes to a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path.
 
-* **unsubscribeBox**(< _string_ >mailboxName, < _function_ >callback) - _(void)_ - Unsubscribes from a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. `callback` has 1 parameter: < _Error_ >err.
+* **unsubscribeBox**(< _string_ >mailboxName) - _(Promise)_ - Unsubscribes from a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path.
 
-* **status**(< _string_ >mailboxName, < _function_ >callback) - _(void)_ - Fetches information about a mailbox other than the one currently open. `callback` has 2 parameters: < _Error_ >err, < _Box_ >mailbox. **Note:** There is no guarantee that this will be a fast operation on the server. Also, do **not** call this on the currently open mailbox.
+* **status**(< _string_ >mailboxName) - _(Promise)_ - Fetches information about a mailbox other than the one currently open. `Resolves` with < _Box_ >mailbox. **Note:** There is no guarantee that this will be a fast operation on the server. Also, do **not** call this on the currently open mailbox.
 
-* **getBoxes**([< _string_ >nsPrefix, ]< _function_ >callback) - _(void)_ - Obtains the full list of mailboxes. If `nsPrefix` is not specified, the main personal namespace is used. `callback` has 2 parameters: < _Error_ >err, < _object_ >boxes. `boxes` has the following format (with example values):
+* **getBoxes**([< _string_ >nsPrefix]) - _(Promise)_ - Obtains the full list of mailboxes. If `nsPrefix` is not specified, the main personal namespace is used. `Resolves` with < _object_ >boxes. `boxes` has the following format (with example values):
 
     ```javascript
     { INBOX: // mailbox name
@@ -490,21 +478,19 @@ Connection Instance Methods
     }
     ```
 
-* **getSubscribedBoxes**([< _string_ >nsPrefix, ]< _function_ >callback) - _(void)_ - Obtains the full list of subscribed mailboxes. If `nsPrefix` is not specified, the main personal namespace is used. `callback` has 2 parameters: < _Error_ >err, < _object_ >boxes. `boxes` has the same format as getBoxes above.
+* **getSubscribedBoxes**([< _string_ >nsPrefix, ]) - _(Promise)_ - Obtains the full list of subscribed mailboxes. If `nsPrefix` is not specified, the main personal namespace is used. `Resolves` with < _object_ >boxes. `boxes` has the same format as getBoxes above.
 
-* **expunge**([< _MessageSource_ >uids, ]< _function_ >callback) - _(void)_ - Permanently removes all messages flagged as Deleted in the currently open mailbox. If the server supports the 'UIDPLUS' capability, `uids` can be supplied to only remove messages that both have their uid in `uids` and have the \Deleted flag set. `callback` has 1 parameter: < _Error_ >err. **Note:** At least on Gmail, performing this operation with any currently open mailbox that is not the Spam or Trash mailbox will merely archive any messages marked as Deleted (by moving them to the 'All Mail' mailbox).
+* **expunge**([< _MessageSource_ >uids, ]) - _(Promise)_ - Permanently removes all messages flagged as Deleted in the currently open mailbox. If the server supports the 'UIDPLUS' capability, `uids` can be supplied to only remove messages that both have their uid in `uids` and have the \Deleted flag set. **Note:** At least on Gmail, performing this operation with any currently open mailbox that is not the Spam or Trash mailbox will merely archive any messages marked as Deleted (by moving them to the 'All Mail' mailbox).
 
-* **append**(< _mixed_ >msgData, [< _object_ >options, ]< _function_ >callback) - _(void)_ - Appends a message to selected mailbox. `msgData` is a string or Buffer containing an RFC-822 compatible MIME message. Valid `options` properties are:
+* **append**(< _mixed_ >msgData, [< _object_ >options, ]) - _(Promise)_ - Appends a message to selected mailbox. `msgData` is a string or Buffer containing an RFC-822 compatible MIME message. Valid `options` properties are:
 
     * **mailbox** - _string_ - The name of the mailbox to append the message to. **Default:** the currently open mailbox
     * **flags** - _mixed_ - A single flag (e.g. 'Seen') or an _array_ of flags (e.g. `['Seen', 'Flagged']`) to append to the message. **Default:** (no flags)
     * **date** - _Date_ - What to use for message arrival date/time. **Default:** (current date/time)
 
-  `callback` has 1 parameter: < _Error_ >err.
-
 **All functions below have sequence number-based counterparts that can be accessed by using the 'seq' namespace of the imap connection's instance (e.g. conn.seq.search() returns sequence number(s) instead of UIDs, conn.seq.fetch() fetches by sequence number(s) instead of UIDs, etc):**
 
-* **search**(< _array_ >criteria, < _function_ >callback) - _(void)_ - Searches the currently open mailbox for messages using given criteria. `criteria` is a list describing what you want to find. For criteria types that require arguments, use an _array_ instead of just the string criteria type name (e.g. ['FROM', 'foo@bar.com']). Prefix criteria types with an "!" to negate.
+* **search**(< _array_ >criteria) - _(Promise)_ - Searches the currently open mailbox for messages using given criteria. `criteria` is a list describing what you want to find. For criteria types that require arguments, use an _array_ instead of just the string criteria type name (e.g. ['FROM', 'foo@bar.com']). Prefix criteria types with an "!" to negate.
 
     * The following message flags are valid types that do not have arguments:
 
@@ -564,7 +550,7 @@ Connection Instance Methods
     * All messages that have 'node-imap' in the subject header: [ ['HEADER', 'SUBJECT', 'node-imap'] ]
     * All messages that _do not_ have 'node-imap' in the subject header: [ ['!HEADER', 'SUBJECT', 'node-imap'] ]
 
-  `callback` has 2 parameters: < _Error_ >err, < _array_ >UIDs.
+  `Resolves` with < _array_ >UIDs.
 
 * **fetch**(< _MessageSource_ >source, [< _object_ >options]) - _ImapFetch_ - Fetches message(s) in the currently open mailbox.
 
@@ -588,21 +574,21 @@ Connection Instance Methods
           **Note:** You can also prefix `bodies` strings (i.e. 'TEXT', 'HEADER', 'HEADER.FIELDS', and 'HEADER.FIELDS.NOT' for `message/rfc822` messages and 'MIME' for any kind of message) with part ids. For example: '1.TEXT', '1.2.HEADER', '2.MIME', etc.
           **Note 2:** 'HEADER*' sections are only valid for parts whose content type is `message/rfc822`, including the root part (no part id).
 
-* **copy**(< _MessageSource_ >source, < _string_ >mailboxName, < _function_ >callback) - _(void)_ - Copies message(s) in the currently open mailbox to another mailbox. `callback` has 1 parameter: < _Error_ >err.
+* **copy**(< _MessageSource_ >source, < _string_ >mailboxName) - _(Promise)_ - Copies message(s) in the currently open mailbox to another mailbox.
 
-* **move**(< _MessageSource_ >source, < _string_ >mailboxName, < _function_ >callback) - _(void)_ - Moves message(s) in the currently open mailbox to another mailbox. `callback` has 1 parameter: < _Error_ >err. **Note:** The message(s) in the destination mailbox will have a new message UID.
+* **move**(< _MessageSource_ >source, < _string_ >mailboxName) - _(Promise)_ - Moves message(s) in the currently open mailbox to another mailbox. **Note:** The message(s) in the destination mailbox will have a new message UID.
 
-* **addFlags**(< _MessageSource_ >source, < _mixed_ >flags, < _function_ >callback) - _(void)_ - Adds flag(s) to message(s). `callback` has 1 parameter: < _Error_ >err.
+* **addFlags**(< _MessageSource_ >source, < _mixed_ >flags) - _(Promise)_ - Adds flag(s) to message(s).
 
-* **delFlags**(< _MessageSource_ >source, < _mixed_ >flags, < _function_ >callback) - _(void)_ - Removes flag(s) from message(s). `callback` has 1 parameter: < _Error_ >err.
+* **delFlags**(< _MessageSource_ >source, < _mixed_ >flags) - _(Promise)_ - Removes flag(s) from message(s).
 
-* **setFlags**(< _MessageSource_ >source, < _mixed_ >flags, < _function_ >callback) - _(void)_ - Sets the flag(s) for message(s). `callback` has 1 parameter: < _Error_ >err.
+* **setFlags**(< _MessageSource_ >source, < _mixed_ >flags) - _(Promise)_ - Sets the flag(s) for message(s).
 
-* **addKeywords**(< _MessageSource_ >source, < _mixed_ >keywords, < _function_ >callback) - _(void)_ - Adds keyword(s) to message(s). `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+* **addKeywords**(< _MessageSource_ >source, < _mixed_ >keywords) - _(Promise)_ - Adds keyword(s) to message(s). `keywords` is either a single keyword or an _array_ of keywords.
 
-* **delKeywords**(< _MessageSource_ >source, < _mixed_ >keywords, < _function_ >callback) - _(void)_ - Removes keyword(s) from message(s). `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+* **delKeywords**(< _MessageSource_ >source, < _mixed_ >keywords) - _(Promise)_ - Removes keyword(s) from message(s). `keywords` is either a single keyword or an _array_ of keywords.
 
-* **setKeywords**(< _MessageSource_ >source, < _mixed_ >keywords, < _function_ >callback) - _(void)_ - Sets keyword(s) for message(s). `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+* **setKeywords**(< _MessageSource_ >source, < _mixed_ >keywords) - _(Promise)_ - Sets keyword(s) for message(s). `keywords` is either a single keyword or an _array_ of keywords.
 
 * **serverSupports**(< _string_ >capability) - _boolean_ - Checks if the server supports the specified capability.
 
@@ -625,11 +611,11 @@ Extensions Supported
 
     * Additional Connection instance methods (seqno-based counterparts exist):
 
-        * **setLabels**(< _MessageSource_ >source, < _mixed_ >labels, < _function_ >callback) - _(void)_ - Replaces labels of message(s) with `labels`. `labels` is either a single label or an _array_ of labels. `callback` has 1 parameter: < _Error_ >err.
+        * **setLabels**(< _MessageSource_ >source, < _mixed_ >labels) - _(Promise)_ - Replaces labels of message(s) with `labels`. `labels` is either a single label or an _array_ of labels.
 
-        * **addLabels**(< _MessageSource_ >source, < _mixed_ >labels, < _function_ >callback) - _(void)_ - Adds `labels` to message(s). `labels` is either a single label or an _array_ of labels. `callback` has 1 parameter: < _Error_ >err.
+        * **addLabels**(< _MessageSource_ >source, < _mixed_ >labels) - _(Promise)_ - Adds `labels` to message(s). `labels` is either a single label or an _array_ of labels.
 
-        * **delLabels**(< _MessageSource_ >source, < _mixed_ >labels, < _function_ >callback) - _(void)_ - Removes `labels` from message(s). `labels` is either a single label or an _array_ of labels. `callback` has 1 parameter: < _Error_ >err.
+        * **delLabels**(< _MessageSource_ >source, < _mixed_ >labels) - _(Promise)_ - Removes `labels` from message(s). `labels` is either a single label or an _array_ of labels.
 
 * **RFC2087**
 
@@ -637,17 +623,17 @@ Extensions Supported
 
     * Additional Connection instance methods:
 
-      * **setQuota**(< _string_ >quotaRoot, < _object_ >quotas, < _function_ >callback) - _(void)_ - Sets the resource limits for `quotaRoot` using the limits in `quotas`. `callback` has 2 parameters: < _Error_ >err, < _object_ >limits. `limits` has the same format as `limits` passed to getQuota()'s callback. Example `quotas` properties (taken from RFC2087):
+      * **setQuota**(< _string_ >quotaRoot, < _object_ >quotas) - _(Promise)_ - Sets the resource limits for `quotaRoot` using the limits in `quotas`. `Resolves` with < _object_ >limits. `limits` has the same format as `limits` passed to getQuota()'s callback. Example `quotas` properties (taken from RFC2087):
 
           * storage - Sum of messages' (RFC822) size, in kilobytes (integer).
           * message - Number of messages (integer).
 
-      * **getQuota**(< _string_ >quotaRoot, < _function_ >callback) - _(void)_ - Gets the resource usage and limits for `quotaRoot`. `callback` has 2 parameters: < _Error_ >err, < _object_ >limits. `limits` is keyed on the resource name, where the values are objects with the following properties:
+      * **getQuota**(< _string_ >quotaRoot) - _(Promise)_ - Gets the resource usage and limits for `quotaRoot`. `Resolves` with < _object_ >limits. `limits` is keyed on the resource name, where the values are objects with the following properties:
 
           * usage - _integer_ - Resource usage.
           * limit - _integer_ - Resource limit.
 
-      * **getQuotaRoot**(< _string_ >mailbox, < _function_ >callback) - _(void)_ - Gets the list of quota roots for `mailbox` and the resource usage and limits for each. `callback` has 2 parameters: < _Error_ >err, < _object_ >info. `info` is keyed on the quota root name, where the values are objects structured like `limits` given by getQuota(). Example `info`:
+      * **getQuotaRoot**(< _string_ >mailbox) - _(Promise)_ - Gets the list of quota roots for `mailbox` and the resource usage and limits for each. `Resolves` with < _object_ >info. `info` is keyed on the quota root name, where the values are objects structured like `limits` given by getQuota(). Example `info`:
 
           ```javascript
             {
@@ -665,9 +651,9 @@ Extensions Supported
 
     * Server capability: UIDPLUS
 
-    * The callback passed to append() will receive an additional argument (the UID of the appended message): < _integer_ >appendedUID.
+    * The Promise returned by append() will resolve with (the UID of the appended message): < _integer_ >appendedUID.
 
-    * The callback passed to copy(), move(), seq.copy(), seq.move() will receive an additional argument (the UID(s) of the copied message(s) in the destination mailbox): < _mixed_ >newUIDs. `newUIDs` can be an integer if just one message was copied, or a string for multiple messages (e.g. '100:103' or '100,125,130' or '100,200:201').
+    * The Promise returned by copy(), move(), seq.copy(), seq.move() will resolve with (the UID(s) of the copied message(s) in the destination mailbox): < _mixed_ >newUIDs. `newUIDs` can be an integer if just one message was copied, or a string for multiple messages (e.g. '100:103' or '100,125,130' or '100,200:201').
 
 * **RFC4551**
 
@@ -679,7 +665,7 @@ Extensions Supported
 
     * search() criteria extensions:
 
-        * **MODSEQ** - _string_ - Modification sequence value. If this criteria is used, the callback parameters are then: < _Error_ >err, < _array_ >UIDs, < _string_ >modseq. The `modseq` callback parameter is the highest modification sequence value of all the messages identified in the search results.
+        * **MODSEQ** - _string_ - Modification sequence value. If this criteria is used, the resolved < _array_ >UIDs will have an attribute < _string_ >modseq. The `modseq` callback parameter is the highest modification sequence value of all the messages identified in the search results.
 
     * fetch() will automatically retrieve the modification sequence value (named 'modseq') for each message.
 
@@ -693,17 +679,17 @@ Extensions Supported
 
     * Additional Connection instance methods (seqno-based counterparts exist):
 
-        * **addFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq, < _function_ >callback) - _(void)_ - Adds flag(s) to message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags. `callback` has 1 parameter: < _Error_ >err.
+        * **addFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq) - _(Promise)_ - Adds flag(s) to message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags.
 
-        * **delFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq, < _function_ >callback) - _(void)_ - Removes flag(s) from message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags. `callback` has 1 parameter: < _Error_ >err.
+        * **delFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq) - _(Promise)_ - Removes flag(s) from message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags.
 
-        * **setFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq, < _function_ >callback) - _(void)_ - Sets the flag(s) for message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags. `callback` has 1 parameter: < _Error_ >err.
+        * **setFlagsSince**(< _MessageSource_ >source, < _mixed_ >flags, < _string_ >modseq) - _(Promise)_ - Sets the flag(s) for message(s) that have not changed since `modseq`. `flags` is either a single flag or an _array_ of flags.
 
-        * **addKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq, < _function_ >callback) - _(void)_ - Adds keyword(s) to message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+        * **addKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq) - _(Promise)_ - Adds keyword(s) to message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords.
 
-        * **delKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq, < _function_ >callback) - _(void)_ - Removes keyword(s) from message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+        * **delKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq) - _(Promise)_ - Removes keyword(s) from message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords.
 
-        * **setKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq, < _function_ >callback) - _(void)_ - Sets keyword(s) for message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords. `callback` has 1 parameter: < _Error_ >err.
+        * **setKeywordsSince**(< _MessageSource_ >source, < _mixed_ >keywords, < _string_ >modseq) - _(Promise)_ - Sets keyword(s) for message(s) that have not changed since `modseq`. `keywords` is either a single keyword or an _array_ of keywords.
 
 * **RFC4731**
 
@@ -711,7 +697,7 @@ Extensions Supported
 
     * Additional Connection instance methods (seqno-based counterpart exists):
 
-      * **esearch**(< _array_ >criteria, < _array_ >options, < _function_ >callback) - _(void)_ - A variant of search() that can return metadata about results. `callback` has 2 parameters: < _Error_ >err, < _object_ >info. `info` has possible keys: 'all', 'min', 'max', 'count'. Valid `options`:
+      * **esearch**(< _array_ >criteria, < _array_ >options) - _(Promise)_ - A variant of search() that can return metadata about results. `Resolves` with < _object_ >info. `info` has possible keys: 'all', 'min', 'max', 'count'. Valid `options`:
 
           * 'ALL' - Retrieves UIDs in a compact form (e.g. [2, '10:11'] instead of search()'s [2, 10, 11]) that match the criteria.
           * 'MIN' - Retrieves the lowest UID that satisfies the criteria.
@@ -726,7 +712,7 @@ Extensions Supported
 
         * Additional Connection instance methods (seqno-based counterpart exists):
 
-          * **sort**(< _array_ >sortCriteria, < _array_ >searchCriteria, < _function_ >callback) - _(void)_ - Performs a sorted search(). A seqno-based counterpart also exists for this function. `callback` has 2 parameters: < _Error_ >err, < _array_ >UIDs. Valid `sortCriteria` are (reverse sorting of individual criteria is done by prefixing the criteria with '-'):
+          * **sort**(< _array_ >sortCriteria, < _array_ >searchCriteria) - _(Promise)_ - Performs a sorted search(). A seqno-based counterpart also exists for this function. `Resolves` with < _array_ >UIDs. Valid `sortCriteria` are (reverse sorting of individual criteria is done by prefixing the criteria with '-'):
 
               * 'ARRIVAL' - Internal date and time of the message.  This differs from the ON criteria in search(), which uses just the internal date.
               * 'CC' - The mailbox of the **first** "cc" address.
@@ -740,7 +726,15 @@ Extensions Supported
 
         * Additional Connection instance methods (seqno-based counterpart exists):
 
-          * **thread**(< _string_ >algorithm, < _array_ >searchCriteria, < _function_ >callback) - _(void)_ - Performs a regular search with `searchCriteria` and groups the resulting search results using the given `algorithm` (e.g. 'references', 'orderedsubject'). `callback` has 2 parameters: < _Error_ >err, < _array_ >UIDs. `UIDs` is a nested array.
+          * **thread**(< _string_ >algorithm, < _array_ >searchCriteria) - _(Promise)_ - Performs a regular search with `searchCriteria` and groups the resulting search results using the given `algorithm` (e.g. 'references', 'orderedsubject'). `Resolves` with < _array_ >UIDs. `UIDs` is a nested array.
+
+    * Server capability: METADATA
+
+        * Additional Connection instance methods:
+
+          * **getMetadata**(< _array_ >keys [, < _string_ >mailbox [, < _string_ >depth]]) - _(Promise)_ - Returns metadata based on the given keys. `mailbox` is optional. `depth`can be set to 0, 1 or infinity. `Resolves` with an < _object_ >data of key-value pairs.
+
+          * **setMetadata**(< _object_ >data)[, < _string_ >mailbox])  - _(Promise)_ - Sets the metadata bases on the given data. `mailbox`is optional. `data` is an object with key-value pairs.
 
 
 
