@@ -213,17 +213,11 @@ describe('Connection', function () {
           result = attrs;
         });
       });
-      f.on('end', function () {
-        setTimeout(function () {
-          var timeout = setTimeout(function () {
-            assert(false, 'Timed out waiting for STATUS');
-          }, 400);
-          imap.status('test', function (err, status) {
-            clearTimeout(timeout);
-            imap.end();
-            resolve({ result, body, bodyInfo })
-          });
-        }, 400);
+      f.on('end', async function () {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        await imap.status('test');
+        imap.end();
+        resolve({ result, body, bodyInfo });
       });
     });
 
@@ -263,10 +257,9 @@ describe('Connection', function () {
       });
       f.on('end', async function () {
         await new Promise(resolve => setTimeout(resolve, 100));
-        imap.status('test', function (err, status) {
-          imap.end();
-          resolve({ result, body, bodyInfo })
-        });
+        await imap.status('test');
+        imap.end();
+        resolve({ result, body, bodyInfo });
       });
     });
 
