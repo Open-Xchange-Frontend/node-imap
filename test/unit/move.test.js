@@ -2,7 +2,7 @@ const assert = require('assert');
 const Imap = require('../../lib/Connection');
 const { getServer, getDefaultConfig } = require('./util');
 
-describe.only('Move', function () {
+describe('Move', function () {
   let server, imap;
 
   afterEach(async function () {
