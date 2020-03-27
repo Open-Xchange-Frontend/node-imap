@@ -5,9 +5,9 @@ const { getServer, getDefaultConfig } = require('./util');
 describe('Metadata', function () {
   let server, imap;
 
-  afterEach(function () {
+  afterEach(async function () {
     if (server) server.close();
-    if (imap) imap.end();
+    if (imap) await imap.end();
   });
 
   describe('get', function () {

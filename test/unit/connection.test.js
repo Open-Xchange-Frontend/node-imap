@@ -5,9 +5,9 @@ const { getServer, getDefaultConfig, CRLF } = require('./util');
 describe('Connection', function () {
   let server, imap;
 
-  afterEach(function () {
+  afterEach(async function () {
     if (server) server.close();
-    if (imap) imap.end();
+    if (imap && imap.state !== 'disconnected') await imap.end();
   });
 
   it('fetch dup', async function () {
@@ -216,7 +216,7 @@ describe('Connection', function () {
       f.on('end', async function () {
         await new Promise(resolve => setTimeout(resolve, 400));
         await imap.status('test');
-        imap.end();
+        await imap.end();
         resolve({ result, body, bodyInfo });
       });
     });
@@ -258,7 +258,7 @@ describe('Connection', function () {
       f.on('end', async function () {
         await new Promise(resolve => setTimeout(resolve, 100));
         await imap.status('test');
-        imap.end();
+        await imap.end();
         resolve({ result, body, bodyInfo });
       });
     });
