@@ -1,57 +1,57 @@
-const assert = require('assert');
-const { Parser } = require('../../lib/Parser');
-const { CR, LF, CRLF } = require('./util');
-const crypto = require('crypto');
+const assert = require('assert')
+const { Parser } = require('../../lib/Parser')
+const { CR, LF, CRLF } = require('./util')
+const crypto = require('crypto')
 
 describe('parser', function () {
-  let parser, stream;
+  let parser, stream
 
-  async function pushToStream(chunks, collectSHA1) {
-    parser.result = [];
-    parser.collectSHA1 = collectSHA1 || false;
+  async function pushToStream (chunks, collectSHA1) {
+    parser.result = []
+    parser.collectSHA1 = collectSHA1 || false
     chunks.forEach(function (chunk) {
-      stream.push(chunk);
-    });
-    await new Promise(resolve => setTimeout(resolve, 0));
-    return { result: parser.result, calculatedSHA1: parser.calculatedSHA1 };
+      stream.push(chunk)
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    return { result: parser.result, calculatedSHA1: parser.calculatedSHA1 }
   }
 
   beforeEach(function () {
-    stream = new require('stream').Readable();
-    stream._read = function () { };
+    stream = new (require('stream').Readable)()
+    stream._read = function () { }
 
-    parser = new Parser(stream);
+    parser = new Parser(stream)
     parser.on('tagged', function (info) {
-      parser.result.push(info);
-    });
+      parser.result.push(info)
+    })
     parser.on('untagged', function (info) {
-      parser.result.push(info);
-    });
+      parser.result.push(info)
+    })
     parser.on('continue', function (info) {
-      parser.result.push(info);
-    });
+      parser.result.push(info)
+    })
     parser.on('other', function (line) {
-      parser.result.push(line);
-    });
+      parser.result.push(line)
+    })
     parser.on('body', function (stream, info) {
-      parser.result.push(info);
+      parser.result.push(info)
       if (parser.collectSHA1) {
-        var hash = crypto.createHash('sha1');
+        var hash = crypto.createHash('sha1')
         stream.on('data', function (d) {
-          hash.update(d);
-        });
+          hash.update(d)
+        })
         stream.on('end', function () {
-          parser.calculatedSHA1 = hash.digest('hex');
-        });
+          parser.calculatedSHA1 = hash.digest('hex')
+        })
       } else {
-        stream.resume();
+        stream.resume()
       }
-    });
-  });
+    })
+  })
 
   it('Tagged OK', async function () {
-    const source = ['A1 OK LOGIN completed', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['A1 OK LOGIN completed', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -61,27 +61,27 @@ describe('parser', function () {
         text: 'LOGIN completed'
       }
       ]
-    );
-  });
+    )
+  })
   it('Unknown line', async function () {
-    const source = ['IDLE OK IDLE terminated', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['IDLE OK IDLE terminated', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       ['IDLE OK IDLE terminated']
-    );
-  });
+    )
+  })
   it('Unknown line with + char', async function () {
-    const source = ['IDLE OK Idle completed (0.002 + 1.783 + 1.783 secs).', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['IDLE OK Idle completed (0.002 + 1.783 + 1.783 secs).', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       ['IDLE OK Idle completed (0.002 + 1.783 + 1.783 secs).']
-    );
-  });
+    )
+  })
   it('Continuation', async function () {
-    const source = ['+ idling', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['+ idling', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -89,11 +89,11 @@ describe('parser', function () {
         text: 'idling'
       }
       ]
-    );
-  });
+    )
+  })
   it('Continuation with text code', async function () {
-    const source = ['+ [ALERT] idling', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['+ [ALERT] idling', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -101,11 +101,11 @@ describe('parser', function () {
         text: 'idling'
       }
       ]
-    );
-  });
+    )
+  })
   it('Continuation (broken -- RFC violation) sent by AOL IMAP', async function () {
-    const source = ['+', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['+', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -113,15 +113,15 @@ describe('parser', function () {
         text: undefined
       }
       ]
-    );
-  });
+    )
+  })
   it('Multiple namespaces', async function () {
     const source = ['* NAMESPACE ',
       '(("" "/")) ',
       '(("~" "/")) ',
       '(("#shared/" "/")("#public/" "/")("#ftp/" "/")("#news." "."))',
-      CRLF];
-    const { result } = await pushToStream(source);
+      CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -168,15 +168,15 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
-  it('Multiple namespaces', async function () {
+    )
+  })
+  it('Multiple namespaces 2', async function () {
     const source = ['* NAMESPACE ',
       '(("" "/" "X-PARAM" ("FLAG1" "FLAG2"))) ',
       'NIL ',
       'NIL',
-      CRLF];
-    const { result } = await pushToStream(source);
+      CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -198,11 +198,11 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Flags', async function () {
-    const source = ['* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -218,11 +218,11 @@ describe('parser', function () {
         ]
       }
       ]
-    );
-  });
+    )
+  })
   it('Search', async function () {
-    const source = ['* SEARCH 2 3 6', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* SEARCH 2 3 6', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -232,11 +232,11 @@ describe('parser', function () {
         text: [2, 3, 6]
       }
       ]
-    );
-  });
+    )
+  })
   it('XList', async function () {
-    const source = ['* XLIST (\\Noselect) "/" ~/Mail/foo', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* XLIST (\\Noselect) "/" ~/Mail/foo', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -250,11 +250,11 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('List', async function () {
-    const source = ['* LIST (\\Noselect) "/" ~/Mail/foo', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* LIST (\\Noselect) "/" ~/Mail/foo', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -268,11 +268,11 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Status', async function () {
-    const source = ['* STATUS blurdybloop (MESSAGES 231 UIDNEXT 44292)', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* STATUS blurdybloop (MESSAGES 231 UIDNEXT 44292)', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -285,11 +285,11 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged OK (with text code, with text)', async function () {
-    const source = ['* OK [UNSEEN 17] Message 17 is the first unseen message', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* OK [UNSEEN 17] Message 17 is the first unseen message', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -302,11 +302,11 @@ describe('parser', function () {
         text: 'Message 17 is the first unseen message'
       }
       ]
-    );
-  });
-  it('Untagged OK (with text code, with text)', async function () {
-    const source = ['* OK [PERMANENTFLAGS (\\Deleted \\Seen \\*)] Limited', CRLF];
-    const { result } = await pushToStream(source);
+    )
+  })
+  it('Untagged OK (with text code, with text) (2)', async function () {
+    const source = ['* OK [PERMANENTFLAGS (\\Deleted \\Seen \\*)] Limited', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -319,11 +319,11 @@ describe('parser', function () {
         text: 'Limited'
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged OK (no text code, with text) (RFC violation)', async function () {
-    const source = ['* OK [UNSEEN 17]', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* OK [UNSEEN 17]', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -336,11 +336,11 @@ describe('parser', function () {
         text: undefined
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged OK (no text code, with text)', async function () {
-    const source = ['* OK IMAP4rev1 Service Ready', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* OK IMAP4rev1 Service Ready', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -350,11 +350,11 @@ describe('parser', function () {
         text: 'IMAP4rev1 Service Ready'
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged OK (no text code, no text) (RFC violation)', async function () {
-    const source = ['* OK', CRLF]; // I have seen servers that send stuff like this ..
-    const { result } = await pushToStream(source);
+    const source = ['* OK', CRLF] // I have seen servers that send stuff like this ..
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -364,11 +364,11 @@ describe('parser', function () {
         text: undefined
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged EXISTS', async function () {
-    const source = ['* 18 EXISTS', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* 18 EXISTS', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -378,11 +378,11 @@ describe('parser', function () {
         text: undefined
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged RECENT', async function () {
-    const source = ['* 2 RECENT', CRLF];
-    const { result } = await pushToStream(source);
+    const source = ['* 2 RECENT', CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -392,8 +392,8 @@ describe('parser', function () {
         text: undefined
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged FETCH (body)', async function () {
     const source = ['* 12 FETCH (BODY[HEADER] {342}', CRLF,
       'Date: Wed, 17 Jul 1996 02:23:25 -0700 (PDT)', CRLF,
@@ -404,8 +404,8 @@ describe('parser', function () {
       'Message-Id: <B27397-0100000@cac.washington.edu>', CRLF,
       'MIME-Version: 1.0', CRLF,
       'Content-Type: TEXT/PLAIN; CHARSET=US-ASCII', CRLF, CRLF,
-      ')', CRLF];
-    const { result, calculatedSHA1 } = await pushToStream(source, true);
+      ')', CRLF]
+    const { result, calculatedSHA1 } = await pushToStream(source, true)
     assert.deepEqual(
       result,
       [{
@@ -420,12 +420,12 @@ describe('parser', function () {
         text: {}
       }
       ]
-    );
-    assert.equal(calculatedSHA1, '1f96faf50f6410f99237791f9e3b89454bf93fa7');
-  });
+    )
+    assert.equal(calculatedSHA1, '1f96faf50f6410f99237791f9e3b89454bf93fa7')
+  })
   it('Untagged FETCH (quoted body)', async function () {
-    const source = ['* 12 FETCH (BODY[TEXT] "IMAP is terrible")', CRLF];
-    const { result, calculatedSHA1 } = await pushToStream(source, true);
+    const source = ['* 12 FETCH (BODY[TEXT] "IMAP is terrible")', CRLF]
+    const { result, calculatedSHA1 } = await pushToStream(source, true)
     assert.deepEqual(
       result,
       [{
@@ -440,12 +440,12 @@ describe('parser', function () {
         text: {}
       }
       ]
-    );
-    assert.equal(calculatedSHA1, 'bac8a1528c133787a6969a10a1ff453ebb9adfc8');
-  });
+    )
+    assert.equal(calculatedSHA1, 'bac8a1528c133787a6969a10a1ff453ebb9adfc8')
+  })
   it('Untagged FETCH (quoted body with escaped chars)', async function () {
-    const source = ['* 12 FETCH (BODY[TEXT] "\\"IMAP\\" is terrible :\\\\")', CRLF];
-    const { result, calculatedSHA1 } = await pushToStream(source, true);
+    const source = ['* 12 FETCH (BODY[TEXT] "\\"IMAP\\" is terrible :\\\\")', CRLF]
+    const { result, calculatedSHA1 } = await pushToStream(source, true)
     assert.deepEqual(
       result,
       [{
@@ -460,13 +460,13 @@ describe('parser', function () {
         text: {}
       }
       ]
-    );
-    assert.equal(calculatedSHA1, '7570c08150050a404603f63f60b65b42378d7d42');
-  });
+    )
+    assert.equal(calculatedSHA1, '7570c08150050a404603f63f60b65b42378d7d42')
+  })
   it('Untagged FETCH with non-body literal', async function () {
     const source = ['* 12 FETCH (INTERNALDATE {26}', CRLF,
-      '17-Jul-1996 02:44:25 -0700)' + CRLF];
-    const { result } = await pushToStream(source);
+      '17-Jul-1996 02:44:25 -0700)' + CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -478,12 +478,12 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged FETCH with non-body literal (length split)', async function () {
     const source = ['* 12 FETCH (INTERNALDATE {2',
-      '6}' + CRLF + '17-Jul-1996 02:44:25 -0700)' + CRLF];
-    const { result } = await pushToStream(source);
+      '6}' + CRLF + '17-Jul-1996 02:44:25 -0700)' + CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -495,13 +495,13 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged FETCH with non-body literal (split CRLF)', async function () {
     const source = ['* 12 FETCH (INTERNALDATE {26}', CRLF,
       '17-Jul-1996 02:44:25 -0700)' + CR,
-      LF];
-    const { result } = await pushToStream(source);
+      LF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -513,8 +513,8 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
   it('Untagged FETCH (flags, date, size, envelope, body[structure])', async function () {
     const source = ['* 12 FETCH (FLAGS (\\Seen)',
       ' INTERNALDATE "17-Jul-1996 02:44:25 -0700"',
@@ -530,8 +530,8 @@ describe('parser', function () {
       ' "<B27397-0100000@cac.washington.edu>")',
       ' BODY ("TEXT" "PLAIN" ("CHARSET" "US-ASCII") NIL NIL "7BIT" 3028',
       ' 92))',
-      CRLF];
-    const { result } = await pushToStream(source);
+      CRLF]
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -605,13 +605,13 @@ describe('parser', function () {
         }
       }
       ]
-    );
-  });
+    )
+  })
 
   describe('extensions', function () {
     it('ESearch UID, 2 items', async function () {
-      const source = ['* ESEARCH (TAG "A285") UID MIN 7 MAX 3800', CRLF];
-      const { result } = await pushToStream(source);
+      const source = ['* ESEARCH (TAG "A285") UID MIN 7 MAX 3800', CRLF]
+      const { result } = await pushToStream(source)
       assert.deepEqual(
         result,
         [{
@@ -621,11 +621,11 @@ describe('parser', function () {
           text: { min: 7, max: 3800 }
         }
         ]
-      );
-    });
+      )
+    })
     it('ESearch 1 item', async function () {
-      const source = ['* ESEARCH (TAG "A284") MIN 4', CRLF];
-      const { result } = await pushToStream(source);
+      const source = ['* ESEARCH (TAG "A284") MIN 4', CRLF]
+      const { result } = await pushToStream(source)
       assert.deepEqual(
         result,
         [{
@@ -635,11 +635,11 @@ describe('parser', function () {
           text: { min: 4 }
         }
         ]
-      );
-    });
+      )
+    })
     it('ESearch ALL list', async function () {
-      const source = ['* ESEARCH (TAG "A283") ALL 2,10:11', CRLF];
-      const { result } = await pushToStream(source);
+      const source = ['* ESEARCH (TAG "A283") ALL 2,10:11', CRLF]
+      const { result } = await pushToStream(source)
       assert.deepEqual(
         result,
         [{
@@ -649,11 +649,11 @@ describe('parser', function () {
           text: { all: ['2', '10:11'] }
         }
         ]
-      );
-    });
+      )
+    })
     it('Quota', async function () {
-      const source = ['* QUOTA "" (STORAGE 10 512)', CRLF];
-      const { result } = await pushToStream(source);
+      const source = ['* QUOTA "" (STORAGE 10 512)', CRLF]
+      const { result } = await pushToStream(source)
       assert.deepEqual(
         result,
         [{
@@ -668,11 +668,11 @@ describe('parser', function () {
           }
         }
         ]
-      );
-    });
+      )
+    })
     it('QuotaRoot', async function () {
-      const source = ['* QUOTAROOT INBOX ""', CRLF];
-      const { result } = await pushToStream(source);
+      const source = ['* QUOTAROOT INBOX ""', CRLF]
+      const { result } = await pushToStream(source)
       assert.deepEqual(
         result,
         [{
@@ -685,12 +685,12 @@ describe('parser', function () {
           }
         }
         ]
-      );
-    });
+      )
+    })
     describe('Metadata', function () {
       it('single entry-value pair', async function () {
-        const source = ['* METADATA "INBOX" (/private/comment "My own comment")', CRLF];
-        const { result } = await pushToStream(source);
+        const source = ['* METADATA "INBOX" (/private/comment "My own comment")', CRLF]
+        const { result } = await pushToStream(source)
         assert.deepEqual(
           result,
           [{
@@ -698,17 +698,17 @@ describe('parser', function () {
             num: undefined,
             textCode: undefined,
             text: {
-              mailbox: "INBOX",
+              mailbox: 'INBOX',
               data: {
                 '/private/comment': 'My own comment'
               }
             }
           }]
         )
-      });
+      })
       it('multiple entry-value pair', async function () {
-        const source = ['* METADATA "INBOX" (/private/comment "My comment" /shared/comment "Its sunny outside!")', CRLF];
-        const { result } = await pushToStream(source);
+        const source = ['* METADATA "INBOX" (/private/comment "My comment" /shared/comment "Its sunny outside!")', CRLF]
+        const { result } = await pushToStream(source)
         assert.deepEqual(
           result,
           [{
@@ -724,10 +724,10 @@ describe('parser', function () {
             }
           }]
         )
-      });
+      })
       it('unsolicited response', async function () {
-        const source = ['* METADATA "" /shared/comment', CRLF];
-        const { result } = await pushToStream(source);
+        const source = ['* METADATA "" /shared/comment', CRLF]
+        const { result } = await pushToStream(source)
         assert.deepEqual(
           result,
           [{
@@ -742,12 +742,12 @@ describe('parser', function () {
             }
           }]
         )
-      });
-    });
-  });
+      })
+    })
+  })
   it('Tagged OK (no text code, no text)', async function () {
-    const source = ['A1 OK', CRLF]; // some servers like ppops.net sends such response
-    const { result } = await pushToStream(source);
+    const source = ['A1 OK', CRLF] // some servers like ppops.net sends such response
+    const { result } = await pushToStream(source)
     assert.deepEqual(
       result,
       [{
@@ -757,6 +757,6 @@ describe('parser', function () {
         text: ''
       }
       ]
-    );
-  });
-});
+    )
+  })
+})

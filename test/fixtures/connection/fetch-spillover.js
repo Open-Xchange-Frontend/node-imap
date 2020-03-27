@@ -1,6 +1,6 @@
-const { CRLF } = require('../../unit/util');
-const crypto = require('crypto');
-const bytes = crypto.pseudoRandomBytes(10240).toString('hex');
+const { CRLF } = require('../../unit/util')
+const crypto = require('crypto')
+const bytes = crypto.randomBytes(10240).toString('hex')
 
 module.exports = {
   responses: [
@@ -30,11 +30,11 @@ module.exports = {
       'A4 OK [READ-ONLY] INBOX selected. (Success)'
     ],
     {
-      command: '* 1 FETCH (UID 1000 FLAGS (\\Seen) INTERNALDATE "05-Sep-2004 00:38:03 +0000" BODY[TEXT] {'
-        + bytes.length
-        + '}'
-        + CRLF
-        + bytes.substring(0, 20000),
+      command: '* 1 FETCH (UID 1000 FLAGS (\\Seen) INTERNALDATE "05-Sep-2004 00:38:03 +0000" BODY[TEXT] {' +
+        bytes.length +
+        '}' +
+        CRLF +
+        bytes.substring(0, 20000),
       end: ''
     },
     [
@@ -51,5 +51,5 @@ module.exports = {
     'A5 FETCH 1,2 (UID FLAGS INTERNALDATE BODY.PEEK[TEXT])',
     'A6 LOGOUT'
   ],
-  bytes,
-};
+  bytes
+}

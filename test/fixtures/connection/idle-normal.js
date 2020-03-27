@@ -53,4 +53,4 @@ module.exports = {
     'A6 STATUS "test" (MESSAGES RECENT UNSEEN UIDVALIDITY UIDNEXT)',
     'A7 LOGOUT'
   ]
-};
+}

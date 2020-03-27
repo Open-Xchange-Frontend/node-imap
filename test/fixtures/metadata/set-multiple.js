@@ -32,4 +32,4 @@ module.exports = {
     'A4 SETMETADATA INBOX (/shared/comment "Shared comment" /private/comment "Private comment")',
     'A5 LOGOUT'
   ]
-};
+}

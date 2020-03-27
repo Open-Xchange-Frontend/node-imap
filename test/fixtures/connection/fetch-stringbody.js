@@ -37,4 +37,4 @@ module.exports = {
       'A6 OK good day (Success)'
     ]
   ]
-};
+}

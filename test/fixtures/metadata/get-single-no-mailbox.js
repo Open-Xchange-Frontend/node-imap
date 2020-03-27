@@ -33,4 +33,4 @@ module.exports = {
     'A4 GETMETADATA "" (/shared/comment)',
     'A5 LOGOUT'
   ]
-};
+}
