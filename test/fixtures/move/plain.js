@@ -62,6 +62,6 @@ module.exports = {
     'A8 UID STORE 1:3 +FLAGS.SILENT (\\Deleted)',
     'A9 EXPUNGE',
     'A10 UID STORE 4,5 +FLAGS.SILENT (\\Deleted)',
-    'A11 LOGOUT',
+    'A11 LOGOUT'
   ]
-};
+}

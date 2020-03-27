@@ -44,6 +44,6 @@ module.exports = {
     'A3 LIST "" ""',
     'A4 EXAMINE "INBOX"',
     'A5 UID MOVE 1:3 "Other"',
-    'A6 LOGOUT',
+    'A6 LOGOUT'
   ]
-};
+}

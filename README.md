@@ -1,4 +1,6 @@
-Description
+[![Build Status](https://travis-ci.com/Open-Xchange-Frontend/node-imap.svg?branch=master)](https://travis-ci.com/Open-Xchange-Frontend/node-imap)
+
+# Description
 ===========
 
 node-imap is an IMAP client module for [node.js](http://nodejs.org/).
