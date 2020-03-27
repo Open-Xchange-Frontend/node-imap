@@ -28,7 +28,7 @@ module.exports = {
           lines = buf.split(CRLF);
           buf = lines.pop();
           lines.forEach(function(l) {
-            if (expected) assert(l === expected[++exp], 'Unexpected client request: ' + l);
+            if (expected) assert.equal(l, expected[++exp], 'Unexpected client request: ');
             if (l === 'DONE') {
               assert(sentCont, 'DONE seen before continuation sent');
               sock.write('IDLE ok\r\n');
