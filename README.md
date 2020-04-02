@@ -35,7 +35,7 @@ const imap = new Imap({
   const box = await imap.openBox('INBOX', true)
   console.log(box)
 
-  const messages = await imap.fetch('1:3', {
+  const messages = await imap.seq.fetch('1:3', {
     bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
     struct: true
   })
@@ -539,6 +539,7 @@ Connection Instance Methods
 
           **Note:** You can also prefix `bodies` strings (i.e. 'TEXT', 'HEADER', 'HEADER.FIELDS', and 'HEADER.FIELDS.NOT' for `message/rfc822` messages and 'MIME' for any kind of message) with part ids. For example: '1.TEXT', '1.2.HEADER', '2.MIME', etc.
           **Note 2:** 'HEADER*' sections are only valid for parts whose content type is `message/rfc822`, including the root part (no part id).
+          **Note 3:** Returns an `EventEmitter` with three additional convenience functions: `all()` returns a promise which resolves with all responses. `chunk(n)` adds a `chunk`-event to the EventEmitter which is triggered every nth response. `end()` returns a promise, which resolves/rejects when fetching is done.
 
 * **copy**(< _MessageSource_ >source, < _string_ >mailboxName) - _(Promise)_ - Copies message(s) in the currently open mailbox to another mailbox.
 
