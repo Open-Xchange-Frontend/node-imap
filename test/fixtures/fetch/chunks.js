@@ -25,15 +25,21 @@ module.exports = {
       '* OK [UIDNEXT 4422] Predicted next UID.',
       'A4 OK [READ-ONLY] INBOX selected. (Success)'
     ],
-    [
-      '* 1 FETCH (UID 1)',
-      '* 1 FETCH (INTERNALDATE "05-Sep-2004 00:38:03 +0000" UID 1000)',
-      '* 1 FETCH (FLAGS (\\Seen))',
+    [...Array(5)].map((v, i) => `* ${i + 1} FETCH (UID ${i + 1} FLAGS (\\Seen) INTERNALDATE "01-Apr-2020 15:52:41 +0000")`).concat([
       'A5 OK Success'
-    ],
+    ]),
     [
       '* BYE LOGOUT Requested',
       'A6 OK good day (Success)'
     ]
+  ],
+  expected: [
+    'A0 CAPABILITY',
+    'A1 LOGIN "foo" "bar"',
+    'A2 NAMESPACE',
+    'A3 LIST "" ""',
+    'A4 EXAMINE "INBOX"',
+    'A5 FETCH 1:5 (UID FLAGS INTERNALDATE)',
+    'A6 LOGOUT'
   ]
 }

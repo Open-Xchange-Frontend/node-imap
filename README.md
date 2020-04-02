@@ -1,41 +1,27 @@
 [![Build Status](https://travis-ci.com/Open-Xchange-Frontend/node-imap.svg?branch=master)](https://travis-ci.com/Open-Xchange-Frontend/node-imap)
 
 # Description
-============
 
 node-imap is an IMAP client module for [node.js](http://nodejs.org/).
 
-This module does not perform any magic such as auto-decoding of messages/attachments or parsing of email addresses (node-imap leaves all mail header values as-is).
+# Requirements
 
-An upgrade guide from node-imap v0.7.x to v0.8.x can be found [here](https://github.com/mscdex/node-imap/wiki/API-changes-between-v0.7-and-v0.8).
+* [node.js](http://nodejs.org/) -- v11.0.0 or newer
+* An IMAP server to connect to -- tested with gmail and dovecot
 
-
-Requirements
-============
-
-* [node.js](http://nodejs.org/) -- v0.8.0 or newer
-
-  * NOTE: node v0.8.x users are supported via the readable-stream module which
-          may not be up-to-date (compared to node v0.10 streams2 implementation)
-
-* An IMAP server to connect to -- tested with gmail
-
-
-Installation
-============
+# Installation
 
     npm install imap
 
-Examples
-========
+# Examples
 
 * Fetch the 'date', 'from', 'to', 'subject' message headers and the message structure of the first 3 messages in the Inbox:
 
 ```javascript
-var Imap = require('imap'),
-    inspect = require('util').inspect;
+const Imap = require('imap')
+const inspect = require('util').inspect
 
-var imap = new Imap({
+const imap = new Imap({
   user: 'mygmailname@gmail.com',
   password: 'mygmailpassword',
   host: 'imap.gmail.com',
@@ -43,89 +29,67 @@ var imap = new Imap({
   tls: true
 });
 
-imap.once('error', function(err) {
-  console.log(err);
-});
+(() => {
+  await imap.connect()
 
-imap.once('end', function() {
-  console.log('Connection ended');
-});
+  const box = await imap.openBox('INBOX', true)
+  console.log(box)
 
-await imap.connect();
-var box = await openBox('INBOX', true);
+  const messages = await imap.fetch('1:3', {
+    bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
+    struct: true
+  })
+  console.log(messages)
 
-var f = imap.seq.fetch('1:3', {
-  bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
-  struct: true
-});
-f.on('message', function(msg, seqno) {
-  console.log('Message #%d', seqno);
-  var prefix = '(#' + seqno + ') ';
-  msg.on('body', function(stream, info) {
-    var buffer = '';
-    stream.on('data', function(chunk) {
-      buffer += chunk.toString('utf8');
-    });
-    stream.once('end', function() {
-      console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-    });
-  });
-  msg.once('attributes', function(attrs) {
-    console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-  });
-  msg.once('end', function() {
-    console.log(prefix + 'Finished');
-  });
-});
-f.once('error', function(err) {
-  console.log('Fetch error: ' + err);
-});
-f.once('end', function() {
-  console.log('Done fetching all messages!');
-  imap.end();
-});
+  imap.end()
+})()
+
+imap.once('end', () => console.log('Connection ended'))
 ```
 
-* Retrieve the 'from' header and buffer the entire body of the newest message:
+* Retrieve the 'from' header and buffer the entire body of the newest message via streaming:
 
 ```javascript
 // using the functions and variables already defined in the first example ...
 
-var f = imap.seq.fetch(box.messages.total + ':*', { bodies: ['HEADER.FIELDS (FROM)','TEXT'] });
-f.on('message', function(msg, seqno) {
-  console.log('Message #%d', seqno);
-  var prefix = '(#' + seqno + ') ';
-  msg.on('body', function(stream, info) {
-    if (info.which === 'TEXT')
-      console.log(prefix + 'Body [%s] found, %d total bytes', inspect(info.which), info.size);
-    var buffer = '', count = 0;
-    stream.on('data', function(chunk) {
-      count += chunk.length;
-      buffer += chunk.toString('utf8');
-      if (info.which === 'TEXT')
-        console.log(prefix + 'Body [%s] (%d/%d)', inspect(info.which), count, info.size);
-    });
-    stream.once('end', function() {
-      if (info.which !== 'TEXT')
-        console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-      else
-        console.log(prefix + 'Body [%s] Finished', inspect(info.which));
-    });
-  });
-  msg.once('attributes', function(attrs) {
-    console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-  });
-  msg.once('end', function() {
-    console.log(prefix + 'Finished');
-  });
-});
-f.once('error', function(err) {
-  console.log('Fetch error: ' + err);
-});
-f.once('end', function() {
-  console.log('Done fetching all messages!');
-  imap.end();
-});
+const f = imap.seq.fetch(box.messages.total + ':*', { bodies: ['HEADER.FIELDS (FROM)','TEXT'] })
+f.on('message', (msg, seqno) => {
+  console.log('Message #%d', seqno)
+  var prefix = `(# ${seqno} )`
+  msg.on('body', (stream, info) => {
+    if (info.which === 'TEXT') {
+      console.log(prefix + 'Body [%s] found, %d total bytes', inspect(info.which), info.size)
+    }
+    let buffer = '', count = 0
+    stream.on('data', (chunk) => {
+      count += chunk.length
+      buffer += chunk.toString('utf8')
+      if (info.which === 'TEXT') {
+        console.log(prefix + 'Body [%s] (%d/%d)', inspect(info.which), count, info.size)
+      }
+    })
+    stream.once('end', () => {
+      if (info.which !== 'TEXT') {
+        console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)))
+      } else {
+        console.log(prefix + 'Body [%s] Finished', inspect(info.which))
+      }
+    })
+  })
+  msg.once('attributes', (attrs) => {
+    console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8))
+  })
+  msg.once('end', () => {
+    console.log(prefix + 'Finished')
+  })
+})
+f.once('error', (err) => {
+  console.log('Fetch error: ' + err)
+})
+f.once('end', () => {
+  console.log('Done fetching all messages!')
+  imap.end()
+})
 ```
 
 * Save raw unread emails since May 20, 2010 to files:
@@ -135,31 +99,31 @@ f.once('end', function() {
 
 var fs = require('fs'), fileStream;
 
-imap.search([ 'UNSEEN', ['SINCE', 'May 20, 2010'] ], function(err, results) {
-  if (err) throw err;
-  var f = imap.fetch(results, { bodies: '' });
-  f.on('message', function(msg, seqno) {
-    console.log('Message #%d', seqno);
-    var prefix = '(#' + seqno + ') ';
-    msg.on('body', function(stream, info) {
-      console.log(prefix + 'Body');
-      stream.pipe(fs.createWriteStream('msg-' + seqno + '-body.txt'));
-    });
-    msg.once('attributes', function(attrs) {
-      console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-    });
-    msg.once('end', function() {
-      console.log(prefix + 'Finished');
-    });
-  });
-  f.once('error', function(err) {
-    console.log('Fetch error: ' + err);
-  });
-  f.once('end', function() {
-    console.log('Done fetching all messages!');
-    imap.end();
-  });
-});
+imap.search([ 'UNSEEN', ['SINCE', 'May 20, 2010'] ], (err, results) => {
+  if (err) throw err
+  var f = imap.fetch(results, { bodies: '' })
+  f.on('message', (msg, seqno) => {
+    console.log('Message #%d', seqno)
+    var prefix = `(# ${seqno} )`
+    msg.on('body', (stream, info) => {
+      console.log(`${prefix} Body`)
+      stream.pipe(fs.createWriteStream(`msg-${seqno}-body.txt`))
+    })
+    msg.once('attributes', (attrs) => {
+      console.log(`${prefix} Attributes: %s`, inspect(attrs, false, 8))
+    })
+    msg.once('end', () => {
+      console.log(prefix + 'Finished')
+    })
+  })
+  f.once('error', (err) => {
+    console.log('Fetch error: ' + err)
+  })
+  f.once('end', () => {
+    console.log('Done fetching all messages!')
+    imap.end()
+  })
+})
 ```
 
 
