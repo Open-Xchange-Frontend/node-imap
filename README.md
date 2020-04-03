@@ -38,7 +38,7 @@ const imap = new Imap({
   const messages = await imap.seq.fetch('1:3', {
     bodies: 'HEADER.FIELDS (FROM TO SUBJECT DATE)',
     struct: true
-  })
+  }).all()
   console.log(messages)
 
   imap.end()
