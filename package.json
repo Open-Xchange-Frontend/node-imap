@@ -10,7 +10,8 @@
   },
   "scripts": {
     "eslint": "eslint lib test",
-    "test": "mocha --config test/.mocharc.js --exit"
+    "test": "mocha --config test/.mocharc.js --exit",
+    "test:debug": "mocha --inspect-brk=9229 --config test/.mocharc.js --exit"
   },
   "engines": {
     "node": ">=11.0.0"
