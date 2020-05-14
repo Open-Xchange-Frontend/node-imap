@@ -16,7 +16,7 @@ describe('Move', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
     await imap.move('1:3', 'Other')
   })
 
@@ -27,7 +27,7 @@ describe('Move', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
     await imap.move('1:3', 'Other')
   })
 
@@ -38,7 +38,7 @@ describe('Move', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
     await imap.move('1:3', 'Other')
   })
 })

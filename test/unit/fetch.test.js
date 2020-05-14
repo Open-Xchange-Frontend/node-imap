@@ -17,7 +17,7 @@ describe('Fetch', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const messages = await imap.seq.fetch('1', {
       markSeen: false,
@@ -77,7 +77,7 @@ describe('Fetch', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const messages = await imap.seq.fetch('1:100').all()
     assert.deepEqual(messages, [...Array(100)].map((v, i) => ({
@@ -94,7 +94,7 @@ describe('Fetch', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const messages = imap.seq.fetch('1:5').chunks(2)
 

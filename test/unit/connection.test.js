@@ -17,7 +17,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const result = await new Promise(resolve => {
       const f = imap.seq.fetch(1)
@@ -42,7 +42,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const result = await new Promise(resolve => {
       var f = imap.seq.fetch(1)
@@ -67,7 +67,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const { result, body, bodyInfo } = await new Promise(resolve => {
       const f = imap.seq.fetch([1, 2], { bodies: ['TEXT'] })
@@ -160,7 +160,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: false }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const { result, body, bodyInfo } = await new Promise(resolve => {
       const f = imap.seq.fetch(1, { bodies: ['TEXT'] })
@@ -201,7 +201,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: true }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const { result, body, bodyInfo } = await new Promise(resolve => {
       const f = imap.seq.fetch(1, { bodies: ['TEXT'] })
@@ -245,7 +245,7 @@ describe('Connection', function () {
     imap = new Imap(Object.assign(config, { keepalive: true }))
 
     await imap.connect()
-    await imap.openBox('INBOX', true)
+    await imap.openBox('INBOX', { readOnly: true })
 
     const { result, body, bodyInfo } = await new Promise(resolve => {
       const f = imap.seq.fetch(1, { bodies: ['TEXT'] })

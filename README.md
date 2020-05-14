@@ -32,7 +32,7 @@ const imap = new Imap({
 (() => {
   await imap.connect()
 
-  const box = await imap.openBox('INBOX', true)
+  const box = await imap.openBox('INBOX', { readonly: true })
   console.log(box)
 
   const messages = await imap.seq.fetch('1:3', {
@@ -281,6 +281,8 @@ Connection Events
 
 * **expunge**(< _integer_ >seqno) - Emitted when a message was expunged externally. `seqno` is the sequence number (instead of the unique UID) of the message that was expunged. If you are caching sequence numbers, all sequence numbers higher than this value **MUST** be decremented by 1 in order to stay synchronized with the server and to keep correct continuity.
 
+* **vanished**(< _array_ >uids, < _boolean_ > earlier) - Emitted when qresync is enabled and a message has vanished. Returns an array of vanished uids. If earlier is false, it means that the message count of the currently opened box will be adjusted automatically. If you are caching sequence numbers, all sequence numbers higher than any of these values **MUST** be decremented by the number of vanished messages in order to stay synchronized with the server and to keep correct continuity.
+
 * **uidvalidity**(< _integer_ >uidvalidity) - Emitted if the UID validity value for the currently open mailbox changes during the current session.
 
 * **update**(< _integer_ >seqno, < _object_ >info) - Emitted when message metadata (e.g. flags) changes externally.
@@ -359,7 +361,7 @@ Connection Instance Methods
 
 * **destroy**() - _(void)_ - Immediately destroys the connection to the server.
 
-* **openBox**(< _string_ >mailboxName[, < _boolean_ >openReadOnly=false[, < _object_ >modifiers]]) - _(Promise)_ - Opens a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. `modifiers` is used by IMAP extensions. `Resolves` with < _Box_ >mailbox.
+* **openBox**(< _string_ >mailboxName[, < _object_ >options]) - _(Promise)_ - Opens a specific mailbox that exists on the server. `mailboxName` should include any necessary prefix/path. Options can contain `readonly` (default `false`) which results in `examine` command instead of `select`. Can contain a `qresync` object with at least `uidvalidity` and `modseq`. Can contain `knownUIDs`, `knowSequenceSet` and `knownUIDSet` (see also [RFC 7162, Section 3.2.5](https://tools.ietf.org/html/rfc7162#section-3.2.5) ). `Resolves` with < _Box_ >mailbox.
 
 * **closeBox**([< _boolean_ >autoExpunge=true]) - _(Promise)_ - Closes the currently open mailbox. If `autoExpunge` is true, any messages marked as Deleted in the currently open mailbox will be removed if the mailbox was NOT opened in read-only mode. If `autoExpunge` is false, you disconnect, or you open another mailbox, messages marked as Deleted will **NOT** be removed from the currently open mailbox.
 
@@ -540,6 +542,7 @@ Connection Instance Methods
           **Note:** You can also prefix `bodies` strings (i.e. 'TEXT', 'HEADER', 'HEADER.FIELDS', and 'HEADER.FIELDS.NOT' for `message/rfc822` messages and 'MIME' for any kind of message) with part ids. For example: '1.TEXT', '1.2.HEADER', '2.MIME', etc.
           **Note 2:** 'HEADER*' sections are only valid for parts whose content type is `message/rfc822`, including the root part (no part id).
           **Note 3:** Returns an `EventEmitter` with three additional convenience functions: `all()` returns a promise which resolves with all responses. `chunk(n)` adds a `chunk`-event to the EventEmitter which is triggered every nth response. `end()` returns a promise, which resolves/rejects when fetching is done.
+          **Note 4:** When launchend with modifier `changedsince` and qresync is enabled, it will trigger `vanished` events.
 
 * **copy**(< _MessageSource_ >source, < _string_ >mailboxName) - _(Promise)_ - Copies message(s) in the currently open mailbox to another mailbox.
 
@@ -713,4 +716,3 @@ Several things not yet implemented in no particular order:
 * Support additional IMAP commands/extensions:
   * NOTIFY (via NOTIFY extension -- RFC5465)
   * STATUS addition to LIST (via LIST-STATUS extension -- RFC5819)
-  * QRESYNC (RFC5162)
