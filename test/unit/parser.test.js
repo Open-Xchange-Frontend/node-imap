@@ -607,6 +607,32 @@ describe('parser', function () {
       ]
     )
   })
+  it('Untagged VANISHED without EARLIER', async function () {
+    const source = ['* VANISHED 505,507,510,625', CRLF]
+    const { result } = await pushToStream(source)
+    assert.deepEqual(
+      result,
+      [{
+        type: 'vanished',
+        num: undefined,
+        textCode: undefined,
+        text: { uids: ['505', '507', '510', '625'] }
+      }]
+    )
+  })
+  it('Untagged VANISHED with EARLIER', async function () {
+    const source = ['* VANISHED (EARLIER) 41,43:116,118', CRLF]
+    const { result } = await pushToStream(source)
+    assert.deepEqual(
+      result,
+      [{
+        type: 'vanished',
+        num: undefined,
+        textCode: undefined,
+        text: { uids: ['41', '43:116', '118'], earlier: true }
+      }]
+    )
+  })
 
   describe('extensions', function () {
     it('ESearch UID, 2 items', async function () {
