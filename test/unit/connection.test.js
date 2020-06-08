@@ -281,4 +281,17 @@ describe('Connection', function () {
       size: 16
     })
   })
+
+  it('does not unnecessary idle', async function () {
+    const data = require('../fixtures/connection/unnecessary-idle.js')
+    server = await getServer(data)
+    const config = getDefaultConfig({ server })
+    imap = new Imap(Object.assign(config, { keepalive: true }))
+
+    await imap.connect()
+    await imap.getMetadata('/shared/comment', 'INBOX')
+    await imap.getMetadata('/shared/comment', 'INBOX')
+
+    await imap.end()
+  })
 })
