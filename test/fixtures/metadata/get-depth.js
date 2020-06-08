@@ -30,7 +30,7 @@ module.exports = {
     'A1 LOGIN "foo" "bar"',
     'A2 NAMESPACE',
     'A3 LIST "" ""',
-    'A4 GETMETADATA "INBOX" (DEPTH 1) (/private/filters/values)',
+    'A4 GETMETADATA (DEPTH 1) "INBOX" (/private/filters/values)',
     'A5 LOGOUT'
   ]
 }
